@@ -1,0 +1,12 @@
+# OS/editor
+.DS_Store
+
+# Local secrets and env
+.env
+.env.*
+!.env.example
+secrets.env
+
+# Python cache
+__pycache__/
+*.pyc

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help System Overhaul: Three Prompts to Fix Four Months of Documentation Drift | EF-Map Blog</title>
+    <meta name="description" content="How we overhauled EF-Map's outdated Help system in under 30 minutes of operator time using LLM sub-agents - fixing 20+ outdated entries, adding search, and cleaning up the UI.">
+    <link rel="canonical" href="https://ef-map.com/blog/help-system-overhaul-llm-subagents">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://ef-map.com/blog/help-system-overhaul-llm-subagents">
+    <meta property="og:title" content="Help System Overhaul: Three Prompts to Fix Four Months of Documentation Drift | EF-Map Blog">
+    <meta property="og:description" content="How we overhauled EF-Map's outdated Help system in under 30 minutes of operator time using LLM sub-agents - fixing 20+ outdated entries, adding search, and cleaning up the UI.">
+    <meta property="og:site_name" content="EF-Map">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Help System Overhaul: Three Prompts to Fix Four Months of Documentation Drift | EF-Map Blog">
+    <meta name="twitter:description" content="How we overhauled EF-Map's outdated Help system in under 30 minutes of operator time using LLM sub-agents - fixing 20+ outdated entries, adding search, and cleaning up the UI.">
+    <!-- JSON-LD Article -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "Help System Overhaul: Three Prompts to Fix Four Months of Documentation Drift",
+      "description": "How we overhauled EF-Map's outdated Help system in under 30 minutes of operator time using LLM sub-agents - fixing 20+ outdated entries, adding search, and cleaning up the UI.",
+      "datePublished": "2026-01-28",
+      "dateModified": "2026-01-28",
+      "author": { "@type": "Organization", "name": "EF-Map" },
+      "publisher": {
+        "@type": "Organization",
+        "name": "EF-Map",
+        "logo": { "@type": "ImageObject", "url": "https://ef-map.com/ef-map-logo.png" }
+      },
+      "mainEntityOfPage": { "@type": "WebPage", "@id": "https://ef-map.com/blog/help-system-overhaul-llm-subagents" }
+    }
+    </script>
+
+    <meta name="keywords" content="help documentation, llm subagents, documentation maintenance, vibe coding, ai development, technical debt, eve frontier, ef-map, solo developer, github copilot">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+    :root {
+      --background: #0A0A0A;
+      --foreground: #FAFAFA;
+      --muted: #1A1A1A;
+      --muted-foreground: #737373;
+      --accent: #FF3D00;
+      --accent-hover: #FF6D40;
+      --border: #262626;
+      --success: #22C55E;
+      --warning: #F59E0B;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: var(--background); 
+      color: var(--foreground); 
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      line-height: 1.7;
+      letter-spacing: -0.01em;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 3rem 2rem; }
+    .back-link { 
+      color: var(--accent); 
+      text-decoration: none; 
+      display: inline-flex; 
+      align-items: center; 
+      gap: 0.5rem; 
+      margin-bottom: 2rem; 
+      font-weight: 500;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 2px;
+      transition: all 0.2s;
+    }
+    .back-link:hover { color: var(--accent-hover); border-bottom-color: var(--accent-hover); }
+    header { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
+    .post-meta { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+    .category { 
+      background: transparent; 
+      padding: 0; 
+      color: var(--accent); 
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .date { color: var(--muted-foreground); font-size: 0.875rem; }
+    h1 { 
+      font-size: 2.5rem; 
+      color: var(--foreground); 
+      margin: 1rem 0; 
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+    .content { color: var(--muted-foreground); font-size: 1.1rem; line-height: 1.8; }
+    .content h2 { 
+      color: var(--foreground); 
+      font-size: 1.75rem; 
+      margin: 3rem 0 1rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.5rem;
+    }
+    .content h3 { 
+      color: var(--foreground); 
+      font-size: 1.25rem; 
+      margin: 2rem 0 1rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .content h4 {
+      color: var(--foreground);
+      font-size: 1.1rem;
+      margin: 1.5rem 0 0.75rem;
+      font-weight: 600;
+    }
+    .content p { margin: 1.2rem 0; }
+    .content strong { color: var(--foreground); font-weight: 600; }
+    .content ul, .content ol { margin: 1.2rem 0 1.2rem 1.5rem; }
+    .content li { margin: 0.5rem 0; }
+    .content a { 
+      color: var(--accent); 
+      text-decoration: none; 
+      border-bottom: 1px solid var(--accent); 
+      transition: all 0.2s;
+    }
+    .content a:hover { color: var(--accent-hover); border-bottom-color: var(--accent-hover); }
+    .content code { 
+      background: var(--muted); 
+      padding: 0.2rem 0.4rem; 
+      font-family: 'JetBrains Mono', 'Consolas', monospace; 
+      font-size: 0.9em; 
+      color: var(--foreground);
+      border: 1px solid var(--border);
+    }
+    .content pre { 
+      background: var(--muted); 
+      border: 1px solid var(--border); 
+      padding: 1.5rem; 
+      overflow-x: auto; 
+      margin: 1.5rem 0;
+    }
+    .content pre code { background: none; padding: 0; border: none; color: var(--foreground); }
+    .content blockquote { 
+      border-left: 3px solid var(--accent); 
+      padding-left: 1.5rem; 
+      margin: 1.5rem 0; 
+      color: var(--muted-foreground); 
+      font-style: italic;
+    }
+    .content img { max-width: 100%; margin: 1.5rem 0; border: 1px solid var(--border); border-radius: 4px; }
+    .content table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+    .content th, .content td { border: 1px solid var(--border); padding: 0.75rem; text-align: left; }
+    .content th { background: var(--muted); color: var(--foreground); font-weight: 600; }
+    .content td { color: var(--muted-foreground); }
+    .keywords { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0; padding-top: 2rem; border-top: 1px solid var(--border); }
+    .keyword { 
+      background: var(--muted); 
+      color: var(--muted-foreground); 
+      padding: 0.25rem 0.625rem; 
+      font-size: 0.75rem; 
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
+    footer { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { color: var(--accent-hover); }
+    .highlight-box { 
+      background: var(--muted); 
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      padding: 1.5rem; 
+      margin: 1.5rem 0;
+    }
+    .highlight-box h4 { color: var(--accent); margin-bottom: 0.75rem; font-weight: 600; }
+    .highlight-box ul, .highlight-box ol { margin: 0.5rem 0 0 1.5rem; }
+    .highlight-box li { margin: 0.25rem 0; color: var(--muted-foreground); }
+    .warning-box { 
+      background: rgba(245, 158, 11, 0.1); 
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-left: 3px solid var(--warning);
+      padding: 1.5rem; 
+      margin: 1.5rem 0;
+    }
+    .warning-box h4 { color: var(--warning); margin-bottom: 0.75rem; font-weight: 600; }
+    .success-box { 
+      background: rgba(34, 197, 94, 0.1); 
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-left: 3px solid var(--success);
+      padding: 1.5rem; 
+      margin: 1.5rem 0;
+    }
+    .success-box h4 { color: var(--success); margin-bottom: 0.75rem; font-weight: 600; }
+    .callout {
+      background: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+    .callout-title {
+      color: var(--foreground);
+      font-weight: 600;
+      font-size: 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+    .callout p { margin: 0.5rem 0 0; }
+    @media (max-width: 640px) {
+      h1 { font-size: 1.875rem; }
+      .content h2 { font-size: 1.5rem; }
+      .container { padding: 2rem 1rem; }
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/blog" class="back-link">â† Back to Blog</a>
+        
+        <header>
+            <div class="post-meta">
+                <span class="category">Development Methodology</span>
+                <span class="date">January 28, 2026</span>
+                <span>7 min read</span>
+            </div>
+            <h1>Help System Overhaul: Three Prompts to Fix Four Months of Documentation Drift</h1>
+        </header>
+
+        <article class="content">
+
+            <p><strong>EF-Map's Help panel was a mess.</strong> Twenty-plus entries describing features as they existed months ago. Missing documentation for major additions. UI problems making it hard to find anything. And the classic solo dev excuse: "I'll update it later."</p>
+
+            <p>Here's how three LLM prompts and about 30 minutes of my time fixed all of it - and why sub-agents made it possible.</p>
+
+            <h2>How Help Documentation Drifted</h2>
+
+            <p>The Help system started strong. Back in August 2025, I had a simple workflow: ship a feature, immediately write the Help entry. Each feature got documented while the implementation was fresh in my mind.</p>
+
+            <p>Then I stopped.</p>
+
+            <p>Not consciously. Just laziness, forgetfulness, the growing backlog of features that felt more exciting than documentation. One skipped entry became two. Two became ten. Over four months, the gap widened:</p>
+
+            <ul>
+                <li><strong>Features evolved</strong> but their Help text didn't. The SSU Finder description still referenced the old UI. Smart Gates mentioned outdated workflow steps.</li>
+                <li><strong>New features shipped undocumented.</strong> Log Parser, Awakened Cinema, Performance Mode - all added with no Help entries at all.</li>
+                <li><strong>Old entries contained dead references.</strong> Features that moved panels, changed names, or gained new options.</li>
+            </ul>
+
+            <p>The fundamental problem is solo dev reality: you won't remember exact details of a feature shipped 2-3 months ago. The codebase remembers. The Help panel doesn't update itself.</p>
+
+            <h2>The UI Problems</h2>
+
+            <p>Beyond stale content, the Help panel had structural issues:</p>
+
+            <div class="highlight-box">
+                <h4>Before: What Was Wrong</h4>
+                <ul>
+                    <li><strong>Too much orange</strong> - Trying to use orange for emphasis, but it competed with actual CTAs (calls-to-action)</li>
+                    <li><strong>No search</strong> - 25+ collapsible items with no way to find what you need</li>
+                    <li><strong>Key links buried</strong> - Technical Blog, Patch Notes, Support, and Embed Guide hidden at the bottom, below 20 feature descriptions</li>
+                    <li><strong>Scroll jumps</strong> - Expanding an item mid-scroll caused the page to jump as content pushed everything down</li>
+                </ul>
+            </div>
+
+            <p>Users opening Help to find Patch Notes (or the Technical Blog, Support section, or Embed Guide) had to scroll past every feature description. Users searching for a specific feature had to manually expand each section.</p>
+
+            <h2>The "Insurmountable Task" Illusion</h2>
+
+            <p>For months, updating Help felt like an insurmountable project. Audit every feature. Compare to current implementation. Rewrite 20+ entries. Test each one. Fix the UI. Add search.</p>
+
+            <p>This mental framing was the real blocker. The actual work?</p>
+
+            <ul>
+                <li><strong>2 prompts for the overhaul</strong> (content audit + UI fixes)</li>
+                <li><strong>1 prompt for this blog post</strong></li>
+                <li><strong>Operator time:</strong> approximately 5-8 minutes speaking, approximately 20-30 minutes agent runtime per prompt</li>
+            </ul>
+
+            <p>Total cost: approximately $0.36 across three prompts at roughly $0.12 each.</p>
+
+            <p>The task that felt like a weekend project took less time than writing this blog post by hand would have.</p>
+
+            <h2>Why Sub-Agents Were Key</h2>
+
+            <p>This overhaul would have choked a single LLM agent. Here's why:</p>
+
+            <p>GitHub Copilot agent mode has limits: roughly 128k tokens input, 16k tokens output per context window. When you're updating 25+ Help entries - reading source files to verify current behavior, rewriting descriptions, checking for accuracy - you hit context compaction fast. The model starts "forgetting" earlier parts of the conversation.</p>
+
+            <p>Sub-agents solve this by getting their own context windows:</p>
+
+            <ol>
+                <li><strong>Orchestrator agent</strong> stays focused on the overall plan</li>
+                <li><strong>Sub-agent 1</strong> audits Routing features (P2P, Explore Mode, Scout Optimizer)</li>
+                <li><strong>Sub-agent 2</strong> audits Display features (region stats, star labels, performance mode)</li>
+                <li><strong>Sub-agent 3</strong> audits Tool features (Log Parser, Blueprints, SSU Finder)</li>
+                <li>Each sub-agent returns a summary, the orchestrator combines them</li>
+            </ol>
+
+            <p>Without sub-agents, I'd have needed to split the work across multiple chat sessions manually - tracking what was done, what needed review, avoiding duplicate work. The agent handles that coordination automatically.</p>
+
+            <div class="callout">
+                <div class="callout-title">The Real "LLMs Change Iteration Speed" Moment</div>
+                <p>A single prompt costs around $0.12. Three prompts to completely overhaul a neglected system: $0.36. The alternative was either continuing to ignore it or spending hours doing the audit manually - and realistically, I would have kept ignoring it.</p>
+                <p style="margin-top: 1rem;">LLMs don't just make development faster. They make "boring but important" maintenance tasks actually get done because the cost/effort barrier drops below the threshold of procrastination.</p>
+            </div>
+
+            <h2>What Changed: Before and After</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Before</th>
+                        <th>After</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Content accuracy</td>
+                        <td>About 60% current (4-5 month lag)</td>
+                        <td>100% current</td>
+                    </tr>
+                    <tr>
+                        <td>Missing features</td>
+                        <td>5+ undocumented</td>
+                        <td>All documented</td>
+                    </tr>
+                    <tr>
+                        <td>Search</td>
+                        <td>None</td>
+                        <td>Live filtering by title/content</td>
+                    </tr>
+                    <tr>
+                        <td>Key links position</td>
+                        <td>Buried at bottom</td>
+                        <td>Prominent section at top</td>
+                    </tr>
+                    <tr>
+                        <td>Color usage</td>
+                        <td>Orange overload</td>
+                        <td>Muted styling, orange reserved for CTAs</td>
+                    </tr>
+                    <tr>
+                        <td>Scroll stability</td>
+                        <td>Jumps on expand</td>
+                        <td>Scroll position preserved</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Content Updates</h3>
+
+            <p>Examples of entries that needed correction:</p>
+
+            <ul>
+                <li><strong>SSU Finder</strong> - Updated to reflect grid view, fuel estimate columns, and freemium subscription tier</li>
+                <li><strong>Smart Gates</strong> - Rewrote to explain current bidirectional routing and authorization visualization</li>
+                <li><strong>Region Statistics</strong> - Added kill activity heatmaps and top killers section that shipped in December</li>
+                <li><strong>Performance Mode</strong> - New entry explaining GPU auto-detection and what it disables</li>
+                <li><strong>Log Parser</strong> - New entry covering local analytics, mining stats, and privacy-first approach</li>
+            </ul>
+
+            <h3>UI Improvements</h3>
+
+            <p>The structural changes make the Help panel actually useful:</p>
+
+            <ul>
+                <li><strong>Quick Links section</strong> at the top - Technical Blog, Patch Notes, Support This Project, Embed Guide immediately visible</li>
+                <li><strong>Search box</strong> filters entries in real-time as you type</li>
+                <li><strong>Muted category styling</strong> replaces the orange-everywhere approach</li>
+                <li><strong>Scroll lock</strong> when expanding items prevents jarring jumps</li>
+            </ul>
+
+            <h2>The Three-Prompt Process</h2>
+
+            <h3>Prompt 1: Content Audit (about 25 min agent time)</h3>
+
+            <p>Goal: Review every Help entry against current codebase. Flag outdated content. Identify missing features. Propose rewrites.</p>
+
+            <p>The agent used sub-agents to parallelize the audit across feature categories. Each sub-agent read relevant source files (SmartAssembliesPanel.tsx, LogParserPanel.tsx, etc.) and compared against Help text.</p>
+
+            <p>Output: A structured report with current/outdated status per entry, plus draft rewrites.</p>
+
+            <h3>Prompt 2: Implementation + UI Fixes (about 20 min agent time)</h3>
+
+            <p>Goal: Apply all content updates. Add search functionality. Reorganize layout. Fix scroll behavior.</p>
+
+            <p>This prompt took the audit report and executed: updating HelpPanel.tsx content, adding the search state and filtering logic, restructuring the JSX layout, and adjusting styles.</p>
+
+            <h3>Prompt 3: Blog Post (about 15 min agent time)</h3>
+
+            <p>Goal: Document the process for the Technical Blog.</p>
+
+            <p>You're reading it.</p>
+
+            <h2>Lessons for Solo Devs</h2>
+
+            <div class="success-box">
+                <h4>What Worked</h4>
+                <ul>
+                    <li><strong>Batch the boring stuff</strong> - Don't try to maintain docs in real-time if you'll skip it. Let them drift, then batch-fix with LLM help</li>
+                    <li><strong>Sub-agents for large scope</strong> - Any task touching 10+ files benefits from parallelized context</li>
+                    <li><strong>Cost framing</strong> - $0.36 to fix months of tech debt? That reframes "should I bother" calculations</li>
+                    <li><strong>Document the meta</strong> - This blog post makes the process repeatable for future audits</li>
+                </ul>
+            </div>
+
+            <p>The Help panel will drift again. Features will ship without documentation updates. That's fine. Now I have a playbook: every few months, run the audit prompt, let sub-agents parallelize the review, apply fixes. Thirty minutes and pocket change.</p>
+
+            <h2>Try the Updated Help Panel</h2>
+
+            <p>Open EF-Map and click the <strong>? Help</strong> button in the top bar. Search for any feature. Check out the Quick Links section at the top. If something's still missing or unclear, give me a shout in Discord or via the EF-Map shoutbox chat.</p>
+
+            <h2>Related Posts</h2>
+
+            <ul>
+                <li><strong><a href="/blog/vibe-coding-large-scale-llm-development">Vibe Coding: Building a 124,000-Line Project Without Writing Code</a></strong> - The development methodology behind EF-Map</li>
+                <li><strong><a href="/blog/context7-mcp-documentation-automation">Context7 MCP: Documentation Automation</a></strong> - How we keep LLMs informed about the codebase</li>
+                <li><strong><a href="/blog/smart-assembly-size-filtering-45-minutes">Smart Assembly Size Filtering in 45 Minutes</a></strong> - Another example of rapid LLM-assisted development</li>
+            </ul>
+
+        </article>
+
+        <div class="keywords">
+            <span class="keyword">help documentation</span><span class="keyword">llm subagents</span><span class="keyword">documentation maintenance</span><span class="keyword">vibe coding</span><span class="keyword">ai development</span><span class="keyword">technical debt</span><span class="keyword">solo developer</span><span class="keyword">github copilot</span><span class="keyword">eve frontier</span>
+        </div>
+
+        <footer>
+            <a href="/blog" class="back-link">â† Back to Blog</a>
+            <a href="/" style="margin-left: 1rem; color: var(--accent);">Try EF-Map â†’</a>
+            <p style="margin-top: 2rem; color: var(--muted-foreground);">
+                Â© 2026 EF-Map. Built for the <a href="https://www.evefrontier.com/" style="color: var(--accent);">EVE Frontier</a> community.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
