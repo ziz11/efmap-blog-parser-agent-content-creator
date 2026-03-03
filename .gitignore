@@ -10,3 +10,7 @@ secrets.env
 # Python cache
 __pycache__/
 *.pyc
+
+# Local parser temp outputs
+ef_map_blog_articles.sorted.jsonl
+ef_map_blog_single_article.jsonl
