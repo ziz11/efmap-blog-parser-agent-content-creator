@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import re
 import ssl
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html import unescape
@@ -51,6 +53,26 @@ def fetch(url: str, timeout: int = 20, insecure: bool = False) -> str:
             except UnicodeDecodeError:
                 continue
         return raw.decode("utf-8", errors="replace")
+
+
+def fetch_with_retry(
+    url: str,
+    timeout: int = 20,
+    insecure: bool = False,
+    retries: int = 3,
+    backoff: float = 1.5,
+) -> str:
+    last_exc: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            return fetch(url, timeout=timeout, insecure=insecure)
+        except Exception as exc:
+            last_exc = exc
+            if attempt >= retries:
+                break
+            sleep_for = (backoff ** (attempt - 1)) + random.uniform(0.0, 0.35)
+            time.sleep(sleep_for)
+    raise RuntimeError(f"failed after {retries} attempts: {url}") from last_exc
 
 
 def compact_spaces(text: str) -> str:
@@ -380,6 +402,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--article-html", help="Parse a single local article HTML file")
     parser.add_argument("--article-url", default=f"{BASE_URL}/blog/local-article", help="Source URL for --article-html mode")
     parser.add_argument("--timeout", type=int, default=20, help="HTTP timeout seconds")
+    parser.add_argument("--retries", type=int, default=3, help="HTTP retry attempts per URL")
+    parser.add_argument("--min-articles", type=int, default=5, help="Fail full crawl if fewer articles than this were parsed")
     parser.add_argument("--insecure", action="store_true", help="Disable TLS certificate verification")
     return parser.parse_args()
 
@@ -400,10 +424,14 @@ def main() -> int:
             return 3
 
         jsonl_path = Path(args.jsonl)
+        if args.jsonl == "ef_map_blog_articles.jsonl":
+            jsonl_path = Path("ef_map_blog_single_article.jsonl")
         write_jsonl(jsonl_path, articles)
 
         if not args.no_markdown:
             md_path = Path(args.markdown)
+            if args.markdown == "ef_map_blog_articles.md":
+                md_path = Path("ef_map_blog_single_article.md")
             write_markdown(md_path, articles)
 
         print(f"Parsed {len(articles)} articles")
@@ -412,14 +440,36 @@ def main() -> int:
             print(f"Markdown: {Path(args.markdown).resolve()}")
         return 0
 
+    sitemap_xml: str | None = None
+    index_html: str | None = None
     try:
-        sitemap_xml = fetch(SITEMAP_URL, timeout=args.timeout, insecure=args.insecure)
-        index_html = fetch(BLOG_INDEX, timeout=args.timeout, insecure=args.insecure)
+        sitemap_xml = fetch_with_retry(
+            SITEMAP_URL,
+            timeout=args.timeout,
+            insecure=args.insecure,
+            retries=max(1, args.retries),
+        )
     except Exception as exc:
-        print(f"Failed to fetch index/sitemap: {exc}", file=sys.stderr)
+        print(f"Warning: failed to fetch sitemap: {exc}", file=sys.stderr)
+    try:
+        index_html = fetch_with_retry(
+            BLOG_INDEX,
+            timeout=args.timeout,
+            insecure=args.insecure,
+            retries=max(1, args.retries),
+        )
+    except Exception as exc:
+        print(f"Warning: failed to fetch blog index: {exc}", file=sys.stderr)
+
+    if sitemap_xml is None and index_html is None:
+        print("Failed to fetch both sitemap and blog index.", file=sys.stderr)
         return 1
 
-    urls = discover_from_sitemap(sitemap_xml) | discover_from_index(index_html)
+    urls: set[str] = set()
+    if sitemap_xml is not None:
+        urls |= discover_from_sitemap(sitemap_xml)
+    if index_html is not None:
+        urls |= discover_from_index(index_html)
     urls = sorted(urls)
 
     if not urls:
@@ -429,7 +479,12 @@ def main() -> int:
     articles: list[Article] = []
     for url in urls:
         try:
-            html = fetch(url, timeout=args.timeout, insecure=args.insecure)
+            html = fetch_with_retry(
+                url,
+                timeout=args.timeout,
+                insecure=args.insecure,
+                retries=max(1, args.retries),
+            )
             article = parse_article(url, html)
             if article.content:
                 articles.append(article)
@@ -441,6 +496,13 @@ def main() -> int:
     if not articles:
         print("No article content extracted.", file=sys.stderr)
         return 3
+    if len(articles) < max(1, args.min_articles):
+        print(
+            f"Parsed too few articles ({len(articles)} < {max(1, args.min_articles)}). "
+            "Aborting to avoid writing a partial crawl.",
+            file=sys.stderr,
+        )
+        return 5
 
     jsonl_path = Path(args.jsonl)
     write_jsonl(jsonl_path, articles)
