@@ -14,3 +14,5 @@ __pycache__/
 # Local parser temp outputs
 ef_map_blog_articles.sorted.jsonl
 ef_map_blog_single_article.jsonl
+ef_map_blog_single_article.md
+*.tmp
